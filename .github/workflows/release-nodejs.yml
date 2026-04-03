@@ -15,43 +15,57 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # 1. Descargar el código fuente
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2. Instalar Bun (gestor de paquetes)
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
+      # 3. Instalar dependencias con Bun
       - name: Install dependencies
         run: bun install
 
+      # 4. Ejecutar linter (valida código TypeScript/React)
       - name: Run linter
         run: bun run lint
 
-      # Bump version (solo modifica package.json, no commit)
-      - name: Bump version via npm version patch
+      # 5. Incrementar versión en package.json sin crear tag de Git
+      #    Guarda la nueva versión en variable de entorno VERSION
+      - name: Bump version (no git tag)
         run: |
           bun run npm version patch --no-git-tag-version
           echo "VERSION=$(node -p "require('./package.json').version")" >> $env:GITHUB_ENV
         shell: pwsh
 
-      # Compilar y empaquetar sin publicar
-      - name: Build application
-        run: node builder.cjs win --publish never
-        env:
-          GH_TOKEN: dummy                     # evita error de token faltante
-          ELECTRON_BUILDER_PUBLISH: never     # doble seguridad
+      # 6. PARCHEAR builder.cjs para que NUNCA intente publicar
+      #    Inserta la línea process.env.ELECTRON_BUILDER_PUBLISH = 'never'; al inicio del archivo
+      - name: Patch builder.cjs to disable auto-publish
+        run: |
+          $content = Get-Content builder.cjs -Raw
+          $newContent = "process.env.ELECTRON_BUILDER_PUBLISH = 'never';`n`n$content"
+          Set-Content builder.cjs -Value $newContent -NoNewline
+        shell: pwsh
 
-      # Subir artifact temporal (opcional)
-      - name: Upload build artifact
+      # 7. Compilar y empaquetar (--publish never por si acaso)
+      #    No se pasa GH_TOKEN para evitar cualquier intento de autenticación
+      - name: Build application (publish disabled)
+        run: node builder.cjs win --publish never
+        # Sin env GH_TOKEN, sin env ELECTRON_BUILDER_PUBLISH (ya está forzado dentro del script)
+
+      # 8. Subir el instalador como artifact temporal (opcional, útil para depuración)
+      - name: Upload build artifact (temporary)
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: release/*.exe
 
-      # Crear release con todos los assets generados por electron-builder
-      - name: Create Release
+      # 9. Crear release en GitHub y adjuntar TODOS los assets generados
+      #    (exe, blockmap, latest.yml) - solo cuando es push a main (no en PR)
+      - name: Create GitHub Release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
