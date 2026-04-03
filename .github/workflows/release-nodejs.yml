@@ -3,15 +3,12 @@ name: Release
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
-  build-and-release:
+  release:
     runs-on: windows-latest
 
     steps:
@@ -29,29 +26,18 @@ jobs:
       - name: Run linter
         run: bun run lint
 
-      # Build y empaquetado sin publicación automática
-      - name: Build application
-        run: node builder.cjs win --publish never
+      # Incrementar versión y crear tag
+      - name: Bump version and create tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          npm version patch -m "chore(release): %s [skip ci]"
+          git push --follow-tags
         env:
-          ELECTRON_BUILDER_PUBLISH: never   # desactiva publicación automática
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # token válido (evita 401 aunque no publique)
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Subir artifact temporal (opcional, solo para debug)
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-installer
-          path: release/*.exe
-
-      # Crear release en GitHub (solo en push a main)
-      - name: Create Release
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v1
-        with:
-          files: release/*.exe
-          tag_name: v${{ github.run_number }}
-          name: Release ${{ github.run_number }}
-          draft: false
-          prerelease: false
+      # Construir y publicar a GitHub Releases (genera latest.yml + blockmap)
+      - name: Build and publish
+        run: node builder.cjs win --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
