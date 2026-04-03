@@ -1,7 +1,7 @@
 {
   "name": "alphabackendtest",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "dist-electron/main/main.cjs",
   "scripts": {
     "dev": "electron-vite dev",
