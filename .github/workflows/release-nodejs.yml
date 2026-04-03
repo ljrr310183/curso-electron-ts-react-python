@@ -1,0 +1,65 @@
+# Nombre del workflow, aparece en la pestaña Actions de GitHub
+name: Release
+
+# Cuando se ejecuta: push o PR a la rama main (después será main y dev)
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Permisos necesarios para crear releases y subir assets
+permissions:
+  contents: write  # permite crear releases
+  id-token: write  # para autenticación
+
+# Jobs que se ejecutan en paralelo o secuencia
+jobs:
+   # Nombre del job, puedes tener varios (build, test, lint)
+  build-and-release:
+    # Runner: máquina virtual con Windows Server
+    runs-on: windows-latest
+
+    # Pasos secuenciales dentro del job
+    steps:
+      # Paso 1: Checkout del código del repo
+      - name: Checkout code
+        uses: actions/checkout@v4  # action oficial de GitHub
+
+      # Paso 2: Instalar Bun en el runner de Windows
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1  # action oficial de Bun
+        with:
+          bun-version: latest  # o pinnea versión específica
+
+      # Paso 3: Instalar dependencias del proyecto
+      - name: Install dependencies
+        run: bun install
+      
+      # Paso 4: Ejecutar linter para validar código
+      - name: Run linter
+        run: bun run lint
+      
+      # Paso 5: Compilar y empaquetar la app
+      - name: Build application
+        run: node builder.cjs win  # forzamos Windows por el runner
+
+      # Paso 6: Subir el artifact generado como descarga temporal
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release/*.exe  # el .exe generado por electron-builder
+      
+      # Paso 7: Crear release en GitHub (solo en push, no en PR)
+      - name: Create Release
+        if: github.event_name == 'push'  # condición: solo en push, no PR
+        uses: softprops/action-gh-release@v1  # action de terceros para releases
+        with:
+          files: release/*.exe  # adjunta el instalador al release
+          tag_name: v${{ github.run_number }}  # tag automático v1, v2...
+          name: Release ${{ github.run_number }}
+          draft: false  # false = publico, true = borrador
+          prerelease: false  # false = estable, true = beta
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # token automático del repo
