@@ -1,7 +1,6 @@
 // builder.cjs
 const { build } = require('electron-builder');
 const { execSync } = require('child_process');
-const path = require('path');
 
 async function runBuild() {
   try {
@@ -13,7 +12,11 @@ async function runBuild() {
     
     console.log('=== PASO 2: Empaquetando con electron-builder ===');
     
-    const target = process.argv[2] || 'current';
+    // 1. Capturar los argumentos correctamente
+    const args = process.argv.slice(2);
+    const target = args.find(arg => !arg.startsWith('--')) || 'current';
+    const shouldPublish = args.includes('--publish'); // Detecta si viene --publish always
+    
     const options = {
       config: {
         appId: 'com.alphabackendtest.app',
@@ -30,12 +33,23 @@ async function runBuild() {
         extraMetadata: {
           main: 'dist-electron/main/main.cjs'
         },
+
+        // 2. INDICAR EL PROVEEDOR DE PUBLICACIÓN
+        // Al agregar esto, electron-builder sabe que debe generar los archivos de actualización
+        publish: {
+          provider: 'github',
+          releaseType: 'release' // Usa el número de versión literal como nombre del Release
+        },
+
         win: { target: 'nsis', icon: 'build/icon.ico' },
         mac: { target: 'dmg', icon: 'build/icon.icns' },
         linux: { target: 'AppImage', icon: 'build' },
+        
         nsis: {
           oneClick: false,
-          allowToChangeInstallationDirectory: true
+          allowToChangeInstallationDirectory: true,
+          // 3. FORZAR LA GENERACIÓN DEL BLOCKMAP
+          differentialPackage: true 
         }
       }
     };
@@ -43,6 +57,12 @@ async function runBuild() {
     if (target === 'win') options.config.win.target = ['nsis'];
     else if (target === 'mac') options.config.mac.target = ['dmg'];
     else if (target === 'linux') options.config.linux.target = ['AppImage'];
+
+    // 4. INYECTAR EL PUBLISH EN EL BUILD
+    // Si venía --publish always desde el action, se lo pasamos a electron-builder
+    if (shouldPublish) {
+      options.publish = 'always';
+    }
 
     await build(options);
     console.log('=== Build completado en carpeta release/ ===');
