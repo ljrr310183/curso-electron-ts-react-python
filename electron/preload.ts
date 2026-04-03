@@ -1,8 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ElectronApi } from "./types/electron-api";
+import type { ElectronApi, IpcCallback, IpcChannel, IpcData } from "./types/electron-api";
+
 
 
 contextBridge.exposeInMainWorld("electronApi", {
-    sendMessage: (channel: string, data: any) => ipcRenderer.send(channel, data),
-    onMessage: (channel: string, callback: (data: any) => void) => ipcRenderer.on(channel, (_, data) => callback(data))
+    sendMessage: (channel: IpcChannel, data: IpcData) => ipcRenderer.send(channel, data),
+    onMessage: (channel: IpcChannel, callback: IpcCallback) => ipcRenderer.on(channel, (_, data) => callback(data))
 } as ElectronApi);
