@@ -43,6 +43,9 @@ jobs:
       # Paso 5: Compilar y empaquetar la app
       - name: Build application
         run: node builder.cjs win  # forzamos Windows por el runner
+        env:
+          ELECTRON_BUILDER_PUBLISH: never # evita que intente publicar en GitHub, lo haremos manualmente
+
 
       # Paso 6: Subir el artifact generado como descarga temporal
       - name: Upload build artifact
@@ -62,4 +65,4 @@ jobs:
           draft: false  # false = publico, true = borrador
           prerelease: false  # false = estable, true = beta
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # token automático del repo
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # token automático del repo
