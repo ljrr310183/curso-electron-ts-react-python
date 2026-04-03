@@ -45,6 +45,7 @@ jobs:
         run: node builder.cjs win --publish never # forzamos Windows por el runner
         env:
           ELECTRON_BUILDER_PUBLISH: never # evita que intente publicar en GitHub, lo haremos manualmente
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
       # Paso 6: Subir el artifact generado como descarga temporal
