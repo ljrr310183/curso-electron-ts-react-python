@@ -1,3 +1,7 @@
-provider: generic
-url: https://example.com/auto-updates
+provider: github
+owner: ljrr310183
+repo: curso-electron-ts-react-python
+releaseType: release
+prerelease: false
+private: false
 updaterCacheDirName: my-app-updater

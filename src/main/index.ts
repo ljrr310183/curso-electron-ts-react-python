@@ -2,10 +2,15 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { initUpdaters, registerUpdaterIPC } from './updater'
+
+const isDevelopmentMode: boolean = !app.isPackaged
+
+let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -59,6 +64,11 @@ app.whenReady().then(() => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+
+  registerUpdaterIPC()
+  if (!isDevelopmentMode) {
+    initUpdaters(mainWindow)
+  }
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

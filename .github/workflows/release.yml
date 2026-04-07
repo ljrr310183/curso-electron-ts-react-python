@@ -1,0 +1,53 @@
+# Release Workflow
+
+name: Release
+
+on:
+  # Trigger the workflow on push to the dev branch and when a new tag matching the pattern 'v*.*.*' is created. Also trigger on pull requests to the dev branch.
+  push:
+    branches:
+      - dev
+    tags:
+      - 'v*.*.*'
+  # Trigger on pull requests to the dev branch
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+
+    steps:
+      - name: Checkout-code
+        uses: actions/checkout@v4
+        # Set up Bun.js
+      - name: Set up Bun.js
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 'latest'
+      # Install dependencies
+      - name: Install dependencies
+        run: bun install
+        # Run the code linter
+      - name: Checkout code linter
+        run: bun run lint
+        # Build the project
+      - name: Build
+        run: bun run build
+        # Create a release using the ncipollo/release-action
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          artifacts: dist/**
+          generateReleaseNotes: true
